@@ -42,6 +42,7 @@ App = {
 
   render: function() {
     var electionInstance;
+    var count;
     const Web3 = require("web3");
     const ethEnabled = () => {
       if (window.ethereum) {
@@ -68,14 +69,17 @@ App = {
       return electionInstance.candidatesCount();
     }).then(function (candidatesCount) {
       console.log("candidatesCount: " + candidatesCount);
-      
-      for(var i = 1; i <= candidatesCount; i++) {
+      count = candidatesCount
+      return electionInstance.voters(App.account);
+    }).then(function (hasVoted) {     
+      $("#candidateTable tbody").empty();
+      console.log("candidatesCount: " + count);
+      for(var i = 1; i <= count; i++) {
         electionInstance.candidates(i).then(function(candidate) {
           id = candidate[0].c[0];
           name = candidate[1];
           voteCount = candidate[2].c[0];
           console.log(id);
-
           $("#candidateTable").find('tbody')
               .append($('<tr>')
                   .append($('<th>')
@@ -88,9 +92,28 @@ App = {
                     .append(voteCount)
                   )
               );
+              console.log("hasVoted", hasVoted);
+              if (!hasVoted) {
+              $("#candidateTable").find('tbody').find('tr').last().append($('<td>')
+                .append("<button onclick=\"App.castVote("+id+")\" type=\"button\" class=\"btn btn-primary voteBtn\">Vote</button>")
+              )
+            }
         });
       }
-    });
+    })
+  },
+
+  castVote: function(candidateId) {
+    App.contracts.Election.deployed().then(function(instance) {
+      return instance.vote(candidateId, { from: App.account });
+    }).then(function(result) {
+      // Wait for votes to update
+      //App.render();
+      $(".voteBtn").hide();
+      //$("#loader").show();
+    }).catch(function(err) {
+        console.error(err);
+      });
   }
 };
 
